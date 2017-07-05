@@ -75,16 +75,9 @@ void Red_Neuronal::cargar_data()
 	//tData = cv::ml::TrainData::create(testData, cv::ml::SampleTypes::ROW_SAMPLE, testClass);
 }
 
-void Red_Neuronal::cargar_data(std::string archivo, bool tipo)
+void Red_Neuronal::cargar_data(std::string archivo, int tipo)
 {
-	cv::Mat temp=cv::imread(archivo.data(), cv::ImreadModes::IMREAD_GRAYSCALE);
-	std::vector<std::vector<cv::Point>> v_contornos;
-	cv::findContours(temp, v_contornos, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
-	for (size_t i = 0; i < v_contornos.size(); i++)
-	{
-		cv::drawContours(temp, v_contornos, (int)i, 0, 15, cv::LineTypes::LINE_8);
-	}
-	cv::resize(temp, temp, cv::Size(40, 40));
+	cv::Mat temp = preprocesar(archivo);
 	for (size_t i = 0; i < temp.rows; i++)
 	{
 		for (size_t j = 0; j < temp.cols; j++)
@@ -93,10 +86,11 @@ void Red_Neuronal::cargar_data(std::string archivo, bool tipo)
 		}
 
 	}
-	if (tipo)
-		tClass.at<float>(numTrainingdata, 0) = 1.0f;
-	else
-		tClass.at<float>(numTrainingdata, 0) = -1.0f;
+	tClass.at<float>(numTrainingdata, 0) = -1.0f;//cuadrado
+	tClass.at<float>(numTrainingdata, 1) = -1.0f;//triangulo
+	tClass.at<float>(numTrainingdata, 2) = -1.0f;//circulo
+	tClass.at<float>(numTrainingdata, (tipo % 3)) += 2.0f;//truco para evitarnos el switch
+
 	numTrainingdata++;
 }
 
@@ -149,28 +143,20 @@ Red_Neuronal::Red_Neuronal()
 	layers.row(0) = cv::Scalar(1600);
 	layers.row(1) = cv::Scalar(400);
 	layers.row(2) = cv::Scalar(40);
-	layers.row(3) = cv::Scalar(1);
+	layers.row(3) = cv::Scalar(3);
 
 	red = cv::ml::ANN_MLP::create();
 	red->setLayerSizes(layers);
 	red->setActivationFunction(cv::ml::ANN_MLP::ActivationFunctions::SIGMOID_SYM);
 	tData=cv::Mat(1000,40*40,CV_32F);
-	tClass=cv::Mat(1000,1,CV_32F);
+	tClass=cv::Mat(1000,3,CV_32F);
 }
 
 
 // devuelve true si es cuadrado o false si es triangulo
-bool Red_Neuronal::predecir(std::string archivo)
+int Red_Neuronal::predecir(std::string archivo)
 {
-	cv::Mat temp = cv::imread(archivo.data(), cv::ImreadModes::IMREAD_GRAYSCALE);
-	std::vector<std::vector<cv::Point>> v_contornos;
-	cv::findContours(temp, v_contornos, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
-	for (size_t i = 0; i < v_contornos.size(); i++)
-	{
-		cv::drawContours(temp, v_contornos, (int)i, 0, 15, cv::LineTypes::LINE_8);
-	}
-
-	cv::resize(temp, temp, cv::Size(40, 40));
+	cv::Mat temp = preprocesar(archivo);
 	cv::Mat entrada, salida;
 	entrada = cv::Mat(1, 40 * 40, CV_32F);
 	for (size_t i = 0; i < temp.rows; i++)
@@ -182,8 +168,45 @@ bool Red_Neuronal::predecir(std::string archivo)
 
 	}
 	red->predict(entrada, salida);
-	float resultado = salida.at<float>(0, 0);
-	if (resultado > 0)
-		return true;
-	return false;
+	//devolvemos 0 si es cuadrado, 1 si es triangulo o 2 si es circulo
+	int resultado = 0;
+	float resultado0 = salida.at<float>(0, 0);
+	float resultado1 = salida.at<float>(0, 1);
+	float resultado2 = salida.at<float>(0, 2);
+	if (resultado0 > resultado1)
+		if (resultado0 > resultado2)
+			resultado = 0;
+		else
+			resultado = 2;
+	else
+		if (resultado1 > resultado2)
+			resultado = 1;
+		else
+			resultado = 2;
+	return resultado;
+}
+
+
+// muestra como se ve una imagen luego de ser procesada
+void Red_Neuronal::mostrar(std::string archivo)
+{
+	cv::Mat temp = preprocesar(archivo);
+	cv::imshow("imagen procesada", temp);
+	cv::waitKey();
+}
+
+
+// devuelve una matriz ya procesada para ser trabajada con la red
+cv::Mat Red_Neuronal::preprocesar(std::string archivo)
+{
+	cv::Mat temp = cv::imread(archivo.data(), cv::ImreadModes::IMREAD_GRAYSCALE);
+	std::vector<std::vector<cv::Point>> v_contornos;
+	cv::findContours(temp, v_contornos, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+	for (size_t i = 0; i < v_contornos.size(); i++)
+	{
+		cv::drawContours(temp, v_contornos, (int)i, 0, 15, cv::LineTypes::LINE_8);
+	}
+
+	cv::resize(temp, temp, cv::Size(40, 40));
+	return temp;
 }
