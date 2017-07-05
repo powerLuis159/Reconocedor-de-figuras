@@ -72,12 +72,38 @@ void Red_Neuronal::cargar_data()
 	}
 
 
-	tData = cv::ml::TrainData::create(testData, cv::ml::SampleTypes::ROW_SAMPLE, testClass);
+	//tData = cv::ml::TrainData::create(testData, cv::ml::SampleTypes::ROW_SAMPLE, testClass);
+}
+
+void Red_Neuronal::cargar_data(std::string archivo, bool tipo)
+{
+	cv::Mat temp=cv::imread(archivo.data(), cv::ImreadModes::IMREAD_GRAYSCALE);
+	std::vector<std::vector<cv::Point>> v_contornos;
+	cv::findContours(temp, v_contornos, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+	for (size_t i = 0; i < v_contornos.size(); i++)
+	{
+		cv::drawContours(temp, v_contornos, (int)i, 0, 15, cv::LineTypes::LINE_8);
+	}
+	cv::resize(temp, temp, cv::Size(40, 40));
+	for (size_t i = 0; i < temp.rows; i++)
+	{
+		for (size_t j = 0; j < temp.cols; j++)
+		{
+			tData.at<float>(numTrainingdata, i * 40 + j) = (float)temp.at<unsigned char>(i, j) / 256;
+		}
+
+	}
+
+	tClass.at<float>(numTrainingdata, 0) = tipo ? 1.0f : -1.0f;
+	numTrainingdata++;
 }
 
 void Red_Neuronal::entrenar()
 {
-	red->train(tData);
+	tData.resize(numTrainingdata);
+	tClass.resize(numTrainingdata);
+	cv::Ptr<cv::ml::TrainData> trainData = cv::ml::TrainData::create(tData, cv::ml::SampleTypes::ROW_SAMPLE, tClass);
+	red->train(trainData);
 }
 
 void Red_Neuronal::predecir()
@@ -126,4 +152,27 @@ Red_Neuronal::Red_Neuronal()
 	red = cv::ml::ANN_MLP::create();
 	red->setLayerSizes(layers);
 	red->setActivationFunction(cv::ml::ANN_MLP::ActivationFunctions::SIGMOID_SYM);
+	tData=cv::Mat(1000,40*40,CV_32F);
+	tClass=cv::Mat(1000,1,CV_32F);
+}
+
+
+// devuelve true si es cuadrado o false si es triangulo
+bool Red_Neuronal::predecir(std::string archivo)
+{
+	cv::Mat temp = cv::imread(archivo.data(), cv::ImreadModes::IMREAD_GRAYSCALE);
+	std::vector<std::vector<cv::Point>> v_contornos;
+	cv::findContours(temp, v_contornos, CV_RETR_CCOMP, CV_CHAIN_APPROX_SIMPLE);
+	for (size_t i = 0; i < v_contornos.size(); i++)
+	{
+		cv::drawContours(temp, v_contornos, (int)i, 0, 15, cv::LineTypes::LINE_8);
+	}
+
+	cv::resize(temp, temp, cv::Size(40, 40));
+	cv::Mat entrada, salida;
+	entrada = cv::Mat(1, 40 * 40, CV_32F);
+	red->predict(entrada, salida);
+	if (salida.at<float>(0, 0) > 0)
+		return true;
+	return false;
 }
