@@ -93,8 +93,10 @@ void Red_Neuronal::cargar_data(std::string archivo, bool tipo)
 		}
 
 	}
-
-	tClass.at<float>(numTrainingdata, 0) = tipo ? 1.0f : -1.0f;
+	if (tipo)
+		tClass.at<float>(numTrainingdata, 0) = 1.0f;
+	else
+		tClass.at<float>(numTrainingdata, 0) = -1.0f;
 	numTrainingdata++;
 }
 
@@ -171,8 +173,17 @@ bool Red_Neuronal::predecir(std::string archivo)
 	cv::resize(temp, temp, cv::Size(40, 40));
 	cv::Mat entrada, salida;
 	entrada = cv::Mat(1, 40 * 40, CV_32F);
+	for (size_t i = 0; i < temp.rows; i++)
+	{
+		for (size_t j = 0; j < temp.cols; j++)
+		{
+			entrada.at<float>(0, i * 40 + j) = (float)temp.at<unsigned char>(i, j) / 256;
+		}
+
+	}
 	red->predict(entrada, salida);
-	if (salida.at<float>(0, 0) > 0)
+	float resultado = salida.at<float>(0, 0);
+	if (resultado > 0)
 		return true;
 	return false;
 }

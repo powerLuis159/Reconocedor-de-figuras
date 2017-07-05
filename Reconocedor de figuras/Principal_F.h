@@ -201,6 +201,7 @@ namespace Reconocedordefiguras {
 		//red.cargar_data();
 	}
 	private: System::Void button2_Click(System::Object^  sender, System::EventArgs^  e) {
+		labelR->Text = L"Entrenando...";
 		red->entrenar();
 		labelR->Text = L"Entrenamiento finalizado";
 	}
@@ -218,8 +219,9 @@ private: System::Void button3_Click(System::Object^  sender, System::EventArgs^ 
 	Marshal::FreeHGlobal(IntPtr((void*)chars));
 	}
 private: System::Void button4_Click(System::Object^  sender, System::EventArgs^  e) {
-	openFileDialog1->ShowDialog();
 	
+	openFileDialog1->ShowDialog();
+	labelR->Text = L"cargando...";
 	String^ archivo= openFileDialog1->FileName;
 	using namespace Runtime::InteropServices;
 	const char * chars;
